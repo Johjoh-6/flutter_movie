@@ -6,7 +6,6 @@ import 'package:movie_list/movie/movie_type.dart';
 class CardMovie extends StatelessWidget {
   final Movies movie;
   const CardMovie({super.key, required this.movie});
-
   @override
   Widget build(BuildContext context) {
     return InkWell(
@@ -21,17 +20,21 @@ class CardMovie extends StatelessWidget {
                 body: Center(
                     child: Column(children: [
                   ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image(
-                        image: movie.image.image,
-                        fit: BoxFit.cover,
-                      )),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image(
+                      image: movie.image.image,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                   const SizedBox(height: 20),
                   Text(movie.title,
-                      style: TextStyle(fontSize: 40, color: movie.color)),
+                      style: TextStyle(
+                          fontSize: 40,
+                          color: movie.color,
+                          fontWeight: FontWeight.bold)),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: movie.tag
+                    children: movie.category
                         .map((tag) => Chip(
                               label: Text(tag),
                             ))
@@ -65,7 +68,8 @@ class CardMovie extends StatelessWidget {
                     Text(movie.title,
                         style: TextStyle(fontSize: 20, color: movie.color)),
                     Row(
-                      children: movie.tag
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: movie.category
                           .map((tag) => Container(
                                 margin: const EdgeInsets.only(right: 3),
                                 padding: const EdgeInsets.all(3),
@@ -73,8 +77,8 @@ class CardMovie extends StatelessWidget {
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(10)),
                                 child: Text(tag,
-                                    style: TextStyle(
-                                        fontSize: 12, color: movie.color)),
+                                    style: const TextStyle(
+                                        fontSize: 12, color: Colors.black)),
                               ))
                           .toList(),
                     )
