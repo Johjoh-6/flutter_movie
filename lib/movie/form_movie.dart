@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/src/widgets/container.dart';
 import 'package:flutter/src/widgets/framework.dart';
+import 'package:movie_list/category_model.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:http/http.dart' as http;
 
@@ -13,16 +15,19 @@ class formMovie extends StatefulWidget {
 
 class _formMovieState extends State<formMovie> {
   final _formKey = GlobalKey<FormState>();
-  List<Map<dynamic, dynamic>> categories = [
-    {'id': 'd2v19lc0l9xcc9b', 'name': 'Action'},
-    {'id': 's9lea178tit607k', 'name': 'Comedy'},
-    {'id': '4ci4imbfszeat7d', 'name': 'Drama'},
-  ];
+
   String _title = '';
-  String _category = '';
   // FileImage _image = const FileImage('');
   String _color = '';
-  String? _selectedCategoryId = '';
+  String _selectedCategoryId = '';
+
+  late Future<List<CategoryMovies>> _categories;
+
+  @override
+  void initState() {
+    super.initState();
+    _categories = getCategory();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,80 +35,96 @@ class _formMovieState extends State<formMovie> {
       appBar: AppBar(
         title: const Text('Create Movie'),
       ),
-      body: Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            TextFormField(
-              decoration: const InputDecoration(
-                labelText: 'Title',
+      body: FutureBuilder<List<CategoryMovies>>(
+        future: _categories,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            return Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: 'Title',
+                    ),
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) {
+                        return 'Please enter a title';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) => _title = value!,
+                  ),
+                  DropdownButton<String>(
+                    value: _selectedCategoryId == ''
+                        ? snapshot.data?.first.id
+                        : _selectedCategoryId,
+                    items: snapshot.data?.map((category) {
+                      return DropdownMenuItem(
+                        value: category.id,
+                        child: Text(category.catName),
+                      );
+                    }).toList(),
+                    onChanged: (newCategoryId) {
+                      setState(() {
+                        _selectedCategoryId = newCategoryId!;
+                      });
+                    },
+                  ),
+                  // TextFormField(
+                  //   decoration: const InputDecoration(
+                  //     labelText: 'Category',
+                  //   ),
+                  //   validator: (value) {
+                  //     if (value?.isEmpty ?? true) {
+                  //       return 'Please enter a category';
+                  //     }
+                  //     return null;
+                  //   },
+                  //   onSaved: (value) => _category = value!,
+                  // ),
+                  // TextFormField(
+                  //   decoration: InputDecoration(
+                  //     labelText: 'Image',
+                  //   ),
+                  // ),
+                  TextFormField(
+                    // keyboardType: ,
+                    decoration: const InputDecoration(
+                      labelText: 'Color',
+                    ),
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) {
+                        return 'Please enter a color';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) => _color = value!,
+                  ),
+                  ElevatedButton(
+                      onPressed: () {
+                        if (_formKey.currentState?.validate() ?? true) {
+                          _formKey.currentState?.save();
+                          print(_title);
+                          print(_selectedCategoryId);
+                          print(_color);
+                          createMovie(
+                              title: _title,
+                              color: _color,
+                              category: _selectedCategoryId);
+                        }
+                      },
+                      child: const Text('Create Movie'))
+                ],
               ),
-              validator: (value) {
-                if (value?.isEmpty ?? true) {
-                  return 'Please enter a title';
-                }
-                return null;
-              },
-              onSaved: (value) => _title = value!,
-            ),
-            // DropdownButton<String>(
-            //   value: _selectedCategoryId,
-            //   items: categories.map((category) {
-            //     return DropdownMenuItem(
-            //       value: category.id,
-            //       child: Text(category.name),
-            //     );
-            //   }).toList(),
-            //   onChanged: (newCategoryId) {
-            //     setState(() {
-            //       _selectedCategoryId = newCategoryId;
-            //     });
-            //   },
-            // ),
-            TextFormField(
-              decoration: const InputDecoration(
-                labelText: 'Category',
-              ),
-              validator: (value) {
-                if (value?.isEmpty ?? true) {
-                  return 'Please enter a category';
-                }
-                return null;
-              },
-              onSaved: (value) => _category = value!,
-            ),
-            // TextFormField(
-            //   decoration: InputDecoration(
-            //     labelText: 'Image',
-            //   ),
-            // ),
-            TextFormField(
-              // keyboardType: ,
-              decoration: const InputDecoration(
-                labelText: 'Color',
-              ),
-              validator: (value) {
-                if (value?.isEmpty ?? true) {
-                  return 'Please enter a color';
-                }
-                return null;
-              },
-              onSaved: (value) => _color = value!,
-            ),
-            ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState?.validate() ?? true) {
-                    _formKey.currentState?.save();
-                    print(_title);
-                    print(_category);
-                    print(_color);
-                    createMovie(
-                        title: _title, color: _color, category: _category);
-                  }
-                },
-                child: const Text('Create Movie'))
-          ],
-        ),
+            );
+          } else if (snapshot.hasError) {
+            return Text('${snapshot.error}');
+          }
+
+          // By default, show a loading spinner.
+          return const CircularProgressIndicator();
+        },
       ),
     );
   }
@@ -132,4 +153,16 @@ createMovie(
           // ]
           );
   print(record);
+}
+
+Future<List<CategoryMovies>> getCategory() async {
+  final pb = PocketBase('http://127.0.0.1:8090');
+
+  // fetch a paginated records list
+  final resultList = await pb.collection('category').getFullList(
+        batch: 200,
+        sort: '-created',
+      );
+
+  return resultList.map((e) => CategoryMovies.fromJson(e)).toList();
 }

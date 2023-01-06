@@ -19,8 +19,10 @@ class Movies {
         color: Color(
             int.parse(json.getStringValue('color').substring(1, 7), radix: 16) +
                 0xFF000000),
-        image: Image.network(
-            'http://127.0.0.1:8090/api/files/${json.collectionId}/${json.id}/${json.getStringValue('image')}'),
+        image: json.getStringValue('image') == ''
+            ? Image.network('https://picsum.photos/250?image=9')
+            : Image.network(
+                'http://127.0.0.1:8090/api/files/${json.collectionId}/${json.id}/${json.getStringValue('image')}'),
         category: List<String>.from(
             json.expand['category']!.map((x) => x.getStringValue('catName'))),
       );
